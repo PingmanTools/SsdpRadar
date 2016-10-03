@@ -1,2 +1,8 @@
 bin
 obj
+SsdpRadar/project.lock.json
+packages/MoreLinq.Source.MoreEnumerable.DistinctBy.1.0.1/content/net35/MoreLinq/MoreEnumerable.DistinctBy.cs
+packages/MoreLinq.Source.MoreEnumerable.DistinctBy.1.0.1/MoreLinq.Source.MoreEnumerable.DistinctBy.1.0.1.nupkg
+.vs/SsdpRadar/v14/.suo
+.vs/config/applicationhost.config
+UpgradeLog.htm

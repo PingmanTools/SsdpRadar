@@ -1,20 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{89527F51-3339-49E8-953B-D43E0A4089B1}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{225C81C7-FC03-4FCD-BB81-3B5A3BD404B5}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SsdpRadar.Console</RootNamespace>
-    <AssemblyName>SsdpRadar.Console</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <RootNamespace>SsdpRadar</RootNamespace>
+    <AssemblyName>SsdpRadar</AssemblyName>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -24,7 +23,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -43,19 +41,30 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="..\SsdpRadar\FinderService.cs">
+      <Link>FinderService.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\IFinderService.cs">
+      <Link>IFinderService.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\SsdpDevice.cs">
+      <Link>SsdpDevice.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\SsdpDeviceInfo.cs">
+      <Link>SsdpDeviceInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\SsdpFinder.cs">
+      <Link>SsdpFinder.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\SsdpServiceInfo.cs">
+      <Link>SsdpServiceInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\SsdpRadar\XElementExtensions.cs">
+      <Link>XElementExtensions.cs</Link>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SocketExtensions.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\SsdpRadar.PCL\SsdpRadar.PCL.csproj">
-      <Project>{CD40FAC0-A5DC-4D42-A2A2-1D4D5A453EB3}</Project>
-      <Name>SsdpRadar.PCL</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="..\SsdpRadar.Shared\SsdpRadar.Shared.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

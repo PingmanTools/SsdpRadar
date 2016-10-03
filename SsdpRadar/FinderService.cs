@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 
 namespace SsdpRadar
 {
-   [Xerek.Obfuscation(ApplyToMembers = true)]
    public class FinderService : IFinderService
    {
 
@@ -197,13 +196,7 @@ namespace SsdpRadar
          {
             try
             {
-               var sendCompletion = new TaskCompletionSource<IAsyncResult>();
-
-               socket.BeginSendTo(broadcastData, 0, broadcastData.Length, SocketFlags.None, SSDP_MULTICAST_ENDPOINT, r => sendCompletion.SetResult(r), null);
-
-               var asyncResult = await sendCompletion.Task;
-
-               socket.EndSendTo(asyncResult);
+               var asyncResult = await socket.SendToAsync(new ArraySegment<byte>(broadcastData), SocketFlags.None, SSDP_MULTICAST_ENDPOINT);
 
                if (_broadcasts > 0)
                {
@@ -241,22 +234,17 @@ namespace SsdpRadar
             try
             {
                var buffer = new byte[ushort.MaxValue];
-               var receiveCompletion = new TaskCompletionSource<IAsyncResult>();
 
-               socket.BeginReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref endpoint, r =>
+               var receiveTask = socket.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, endpoint);
+               var finishedTask = await Task.WhenAny(receiveTask, _cancelTask.Task, replyWaitTask);
+
+               if (finishedTask == receiveTask)
                {
-                  receiveCompletion.SetResult(r);
-               }, null);
-
-               var finishedTask = await Task.WhenAny(receiveCompletion.Task, _cancelTask.Task, replyWaitTask);
-
-               if (finishedTask == receiveCompletion.Task)
-               {
-                  var asyncResult = await receiveCompletion.Task;
-                  var received = socket.EndReceiveFrom(asyncResult, ref endpoint);
-                  if (received > 0)
+                  var asyncResult = await receiveTask;
+                  var received = receiveTask.Result;
+                  if (received.ReceivedBytes > 0)
                   {
-                     var responseData = Encoding.ASCII.GetString(buffer, 0, received);
+                     var responseData = Encoding.ASCII.GetString(buffer, 0, received.ReceivedBytes);
                      var device = SsdpDevice.ParseBroadcastResponse(responseData);
                      if (device != null)
                      {
