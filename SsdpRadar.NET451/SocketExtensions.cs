@@ -37,10 +37,12 @@ namespace SsdpRadar
          try
          {
             var sendCompletion = new TaskCompletionSource<IAsyncResult>();
-            socket.BeginSendTo(buffer.Array, buffer.Offset, buffer.Count, SocketFlags.None, endpoint, r => sendCompletion.SetResult(r), null);
-            return socket.EndSendTo(await sendCompletion.Task);
+            var asyncResult = socket.BeginSendTo(buffer.Array, buffer.Offset, buffer.Count, SocketFlags.None, endpoint, r => sendCompletion.SetResult(r), null);
+            //var asyncResult = await sendCompletion.Task;
+            await sendCompletion.Task;
+            return socket.EndSendTo(asyncResult);
          }
-         catch (ObjectDisposedException)
+         catch
          {
             return 0;
          }

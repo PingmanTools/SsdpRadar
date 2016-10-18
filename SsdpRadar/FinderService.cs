@@ -103,8 +103,8 @@ namespace SsdpRadar
       {
          foreach (var adapter in NetworkInterface.GetAllNetworkInterfaces())
          {
-            if (!adapter.GetIPProperties().MulticastAddresses.Any())
-               continue; // most of VPN adapters will be skipped
+            //if (!adapter.GetIPProperties().MulticastAddresses.Any())
+            //   continue; // most of VPN adapters will be skipped
 
             if (!adapter.SupportsMulticast)
                continue; // multicast is meaningless for this type of connection
@@ -166,8 +166,19 @@ namespace SsdpRadar
          {
             socket.ExclusiveAddressUse = false;
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, IPAddress.HostToNetworkOrder(adapter.InterfaceIndex));
-            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(SSDP_IP, adapter.InterfaceIndex));
+
+            try
+            {
+               socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, IPAddress.HostToNetworkOrder(adapter.InterfaceIndex));
+            }
+            catch (ArgumentException) { }
+
+            try
+            {
+               socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(SSDP_IP, adapter.InterfaceIndex));
+            }
+            catch (ArgumentException){}
+
             socket.Bind(new IPEndPoint(adapter.IPAddress, SSDP_UNICAST_PORT));
 
             var receiveTask = ReceiveServicer(socket);
