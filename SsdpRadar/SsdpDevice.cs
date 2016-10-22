@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 
 namespace SsdpRadar
 {
    public class SsdpDevice
    {
+      public IPAddress RemoteEndPoint { get; private set; }
+
       public Uri Location { get; private set; }
 
       public string Server { get; private set; }
@@ -19,7 +22,7 @@ namespace SsdpRadar
       {
       }
 
-      public static SsdpDevice ParseBroadcastResponse(string data)
+      public static SsdpDevice ParseBroadcastResponse(IPAddress endpoint, string data)
       {
          // parse http response header
          var pairs = data
@@ -30,6 +33,7 @@ namespace SsdpRadar
             .ToDictionary(parts => parts[0].ToLowerInvariant().Trim(), parts => parts[1].Trim());
 
          var device = new SsdpDevice();
+         device.RemoteEndPoint = endpoint;
 
          string location;
          if (pairs.TryGetValue("location", out location))

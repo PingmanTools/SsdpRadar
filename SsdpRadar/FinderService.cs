@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace SsdpRadar
 {
@@ -37,7 +38,8 @@ namespace SsdpRadar
       ConcurrentDictionary<Uri, SsdpDevice> _foundLocations = new ConcurrentDictionary<Uri, SsdpDevice>();
 
       TaskCompletionSource<object> _cancelTask = new TaskCompletionSource<object>();
-      bool _isCancelled => _cancelTask.Task.IsCanceled;
+      bool _isCancelled => _cancelTokenSrc.IsCancellationRequested;
+      CancellationTokenSource _cancelTokenSrc;
       bool _isStarted;
       TimeSpan _rebroadcastInterval;
       TimeSpan _replyWait;
@@ -47,13 +49,14 @@ namespace SsdpRadar
 
       DateTime _startedTime;
 
-      public FinderService(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, HttpClient httpClient = null, CancellationToken cancelToken = default(CancellationToken))
+      public FinderService(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, HttpClient httpClient = null, CancellationToken? cancelToken = null)
       {
          _replyWait = replyWait;
          _rebroadcastInterval = rebroadcastInterval;
          _broadcasts = broadcasts;
          if (httpClient == null)
          {
+            ServicePointManager.DefaultConnectionLimit = Math.Max(ServicePointManager.DefaultConnectionLimit, 200);
             _httpClient = new HttpClient();
             _httpClient.Timeout = replyWait;
          }
@@ -61,9 +64,34 @@ namespace SsdpRadar
          {
             _httpClient = httpClient;
          }
-         cancelToken.Register(() => _cancelTask.TrySetCanceled());
+         _cancelTokenSrc = new CancellationTokenSource();
+         if (cancelToken != null)
+         {
+            cancelToken.Value.Register(_cancelTokenSrc.Cancel);
+         }
+         _cancelTokenSrc.Token.Register(() => _cancelTask.TrySetCanceled());
       }
 
+      public static BufferBlock<SsdpDevice> StreamDevices(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, HttpClient httpClient = null, CancellationToken? cancelToken = null)
+      {
+         var finderServer = new FinderService(broadcasts, rebroadcastInterval, replyWait, httpClient, cancelToken);
+         var bufferBlock = finderServer.StreamDevices();
+         bufferBlock.Completion.ContinueWith(t => finderServer.Dispose());
+         return bufferBlock;
+      }
+
+      public BufferBlock<SsdpDevice> StreamDevices()
+      {
+         var bufferBlock = new BufferBlock<SsdpDevice>();
+
+         _deviceFoundCallback = d => bufferBlock.Post(d);
+         var broadcastTask = BroadcastSockets();
+
+         broadcastTask.ContinueWith(t => bufferBlock.Complete());
+         _cancelTokenSrc.Token.Register(() => bufferBlock.Complete());
+
+         return bufferBlock;
+      }
 
       public async Task<IEnumerable<SsdpDevice>> FindDevicesAsync(Action<SsdpDevice> deviceFoundCallback = null)
       {
@@ -78,11 +106,6 @@ namespace SsdpRadar
          };
          await BroadcastSockets();
          return devices;
-      }
-
-      async void StartSetupSockets()
-      {
-         await BroadcastSockets();
       }
 
       class NetworkInterfaceInfo
@@ -115,6 +138,8 @@ namespace SsdpRadar
             if (adapter.NetworkInterfaceType == NetworkInterfaceType.Loopback)
                continue; // strip out loopback addresses
 
+
+
             int interfaceIndex = -1;
             var ipProps = adapter.GetIPProperties();
             try
@@ -143,6 +168,9 @@ namespace SsdpRadar
             if (ipAddress == null)
                continue; // could not find an IPv4 or IPv6 address for this adapter
 
+            if (ipAddress.IsIPv6LinkLocal)
+               continue;
+
             yield return new NetworkInterfaceInfo(adapter, interfaceIndex, ipAddress);
          }
       }
@@ -151,44 +179,38 @@ namespace SsdpRadar
       {
          _startedTime = DateTime.UtcNow;
 
-         //var localAddresses = _networkInterfaceProvider.GetLocalInterfaces().Select(b => new IPAddress(b));
-
          var niIndexs = GetUsableNetworkInterfaces();
 
-         var socketTasks = niIndexs.Select(a => BroadcastSocket(a));
+         var socketTasks = niIndexs.Select(a => BroadcastSocket(a)).ToList();
 
-         await Task.WhenAny(_cancelTask.Task, Task.WhenAll(socketTasks));
+         await Task.WhenAll(socketTasks);
       }
 
       async Task BroadcastSocket(NetworkInterfaceInfo adapter)
       {
-         using (var socket = new Socket(adapter.IPAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp))
+         using (var udpClient = new UdpClient(adapter.IPAddress.AddressFamily))
          {
-            socket.ExclusiveAddressUse = false;
+            var socket = udpClient.Client;
+
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, IPAddress.HostToNetworkOrder(adapter.InterfaceIndex));
+
             socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
-            try
-            {
-               socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, IPAddress.HostToNetworkOrder(adapter.InterfaceIndex));
-            }
-            catch (ArgumentException) { }
-
-            try
-            {
-               socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(SSDP_IP, adapter.InterfaceIndex));
-            }
-            catch (ArgumentException){}
+            udpClient.ExclusiveAddressUse = false;
 
             socket.Bind(new IPEndPoint(adapter.IPAddress, SSDP_UNICAST_PORT));
 
-            var receiveTask = ReceiveServicer(socket);
-            var broadcastTask = BroadcastServicer(socket);
+            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.AddMembership, new MulticastOption(SSDP_IP, adapter.InterfaceIndex));
 
-            await Task.WhenAny(_cancelTask.Task, Task.WhenAll(receiveTask, broadcastTask));
+            var receiveTask = ReceiveServicer(udpClient);
+            var broadcastTask = BroadcastServicer(udpClient);
+            await Task.WhenAll(receiveTask, broadcastTask);
+
+            udpClient.Close();
          }
       }
 
-      private async Task BroadcastServicer(Socket socket)
+      private async Task BroadcastServicer(UdpClient client)
       {
          var broadcastString = string.Join("\r\n",
             "M-SEARCH * HTTP/1.1",
@@ -207,7 +229,7 @@ namespace SsdpRadar
          {
             try
             {
-               var asyncResult = await socket.SendToAsync(new ArraySegment<byte>(broadcastData), SocketFlags.None, SSDP_MULTICAST_ENDPOINT);
+               var asyncResult = await client.SendAsync(broadcastData, broadcastData.Length, (IPEndPoint)SSDP_MULTICAST_ENDPOINT);
 
                if (_broadcasts > 0)
                {
@@ -223,16 +245,34 @@ namespace SsdpRadar
                   await Task.WhenAny(Task.Delay(_rebroadcastInterval), _cancelTask.Task);
                }
             }
+            catch (ObjectDisposedException) { }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-               System.Console.WriteLine(ex);
+               Console.WriteLine(ex);
             }
          }
 
       }
 
-      private async Task ReceiveServicer(Socket socket)
+      async void ObserveTask(Task task)
+      {
+         try
+         {
+            await task;
+         }
+         catch (ObjectDisposedException) { }
+         catch (OperationCanceledException) { }
+         catch (Exception ex)
+         {
+            Console.WriteLine(ex);
+            #if DEBUG
+            throw;
+            #endif
+         }
+      }
+
+      private async Task ReceiveServicer(UdpClient client)
       {
          var endpoint = SSDP_RECEIVE_ENDPOINT;
 
@@ -244,26 +284,25 @@ namespace SsdpRadar
          {
             try
             {
-               var buffer = new byte[ushort.MaxValue];
-
-               var receiveTask = socket.ReceiveFromAsync(new ArraySegment<byte>(buffer), SocketFlags.None, endpoint);
+               var receiveTask = client.ReceiveAsync();
                var finishedTask = await Task.WhenAny(receiveTask, _cancelTask.Task, replyWaitTask);
 
                if (finishedTask == receiveTask)
                {
                   var asyncResult = await receiveTask;
                   var received = receiveTask.Result;
-                  if (received.ReceivedBytes > 0)
+                  if (received.Buffer != null && received.Buffer.Length > 0)
                   {
-                     var responseData = Encoding.ASCII.GetString(buffer, 0, received.ReceivedBytes);
-                     var device = SsdpDevice.ParseBroadcastResponse(responseData);
+                     var responseData = Encoding.ASCII.GetString(received.Buffer, 0, received.Buffer.Length);
+
+                     var device = SsdpDevice.ParseBroadcastResponse(received.RemoteEndPoint.Address, responseData);
                      if (device != null)
                      {
                         if (_foundLocations.TryAdd(device.Location, device))
                         {
                            if (device.Location.Scheme != "unknown")
                            {
-                              fetchDeviceInfoTasks.Add(FetchDeviceInfo(device));
+                              fetchDeviceInfoTasks.Add(FetchDeviceInfo(device, _cancelTokenSrc.Token));
                            }
                            else
                            {
@@ -273,12 +312,17 @@ namespace SsdpRadar
                      }
                   }
                }
+               else 
+               {
+                  ObserveTask(receiveTask);
+               }
 
             }
+            catch (ObjectDisposedException){ }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-               System.Console.WriteLine(ex);
+               Console.WriteLine(ex);
             }
          }
 
@@ -288,11 +332,11 @@ namespace SsdpRadar
          }
       }
 
-      private async Task FetchDeviceInfo(SsdpDevice device)
+      private async Task FetchDeviceInfo(SsdpDevice device, CancellationToken cancelToken)
       {
          try
          {
-            var response = await _httpClient.GetAsync(device.Location);
+            var response = await _httpClient.GetAsync(device.Location, cancelToken);
             if (response.StatusCode == HttpStatusCode.OK)
             {
                var data = await response.Content.ReadAsByteArrayAsync();
@@ -306,10 +350,11 @@ namespace SsdpRadar
                //}
             }
          }
+         catch (ObjectDisposedException) { }
          catch (OperationCanceledException) { }
          catch (Exception ex)
          {
-            System.Console.WriteLine(ex);
+            Console.WriteLine(ex);
          }
 
          _deviceFoundCallback?.Invoke(device);
@@ -317,7 +362,8 @@ namespace SsdpRadar
 
       public void Dispose()
       {
-         _cancelTask.SetCanceled();
+         _cancelTokenSrc.Cancel();
+         _cancelTask.TrySetCanceled();
          _httpClient.Dispose();
          _deviceFoundCallback = null;
       }

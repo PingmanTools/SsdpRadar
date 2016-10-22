@@ -17,7 +17,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
+    <DefineConstants>__UNIFIED__;DEBUG;__MonoCS__;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <EnableCodeSigning>false</EnableCodeSigning>
@@ -33,7 +33,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
     <OutputPath>bin\Release</OutputPath>
-    <DefineConstants></DefineConstants>
+    <DefineConstants>__UNIFIED__;__MonoCS__;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <EnableCodeSigning>false</EnableCodeSigning>
@@ -53,6 +53,9 @@
     <Reference Include="System.Xml" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Threading.Tasks.Dataflow">
+      <HintPath>..\..\..\PingPlotter.Mac\packages\System.Threading.Tasks.Dataflow.4.6.0\lib\netstandard1.1\System.Threading.Tasks.Dataflow.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -68,9 +71,6 @@
     <Compile Include="..\SsdpRadar\SsdpDeviceInfo.cs">
       <Link>SsdpDeviceInfo.cs</Link>
     </Compile>
-    <Compile Include="..\SsdpRadar\SsdpFinder.cs">
-      <Link>SsdpFinder.cs</Link>
-    </Compile>
     <Compile Include="..\SsdpRadar\SsdpServiceInfo.cs">
       <Link>SsdpServiceInfo.cs</Link>
     </Compile>
@@ -80,6 +80,9 @@
     <Compile Include="..\SsdpRadar.NET451\SocketExtensions.cs">
       <Link>SocketExtensions.cs</Link>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Mac\Xamarin.Mac.CSharp.targets" />
 </Project>
