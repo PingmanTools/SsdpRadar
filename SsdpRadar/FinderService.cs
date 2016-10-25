@@ -255,7 +255,7 @@ namespace SsdpRadar
 
       }
 
-      async void ObserveTask(Task task)
+      async void ObserveUdpReadTask(Task task)
       {
          try
          {
@@ -266,9 +266,9 @@ namespace SsdpRadar
          catch (Exception ex)
          {
             Console.WriteLine(ex);
-            #if DEBUG
+#if DEBUG
             throw;
-            #endif
+#endif
          }
       }
 
@@ -314,15 +314,17 @@ namespace SsdpRadar
                }
                else 
                {
-                  ObserveTask(receiveTask);
+                  ObserveUdpReadTask(receiveTask);
                }
-
             }
             catch (ObjectDisposedException){ }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                Console.WriteLine(ex);
+#if DEBUG
+               throw ex;
+#endif
             }
          }
 
