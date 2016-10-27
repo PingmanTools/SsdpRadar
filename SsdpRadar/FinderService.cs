@@ -272,6 +272,18 @@ namespace SsdpRadar
          }
       }
 
+      async Task<UdpReceiveResult> SafeReceiveAsync(UdpClient client)
+      {
+         try
+         {
+            return await client.ReceiveAsync();
+         }
+         catch
+         {
+            return new UdpReceiveResult();
+         }
+      }
+
       private async Task ReceiveServicer(UdpClient client)
       {
          var endpoint = SSDP_RECEIVE_ENDPOINT;
@@ -284,12 +296,16 @@ namespace SsdpRadar
          {
             try
             {
-               var receiveTask = client.ReceiveAsync();
+               var receiveTask = SafeReceiveAsync(client);
                var finishedTask = await Task.WhenAny(receiveTask, _cancelTask.Task, replyWaitTask);
 
                if (finishedTask == receiveTask)
                {
                   var asyncResult = await receiveTask;
+                  if (asyncResult.Buffer == null)
+                  {
+                     continue;
+                  }
                   var received = receiveTask.Result;
                   if (received.Buffer != null && received.Buffer.Length > 0)
                   {
