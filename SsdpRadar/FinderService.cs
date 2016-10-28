@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -31,16 +32,12 @@ namespace SsdpRadar
       private static readonly EndPoint SSDP_MULTICAST_ENDPOINT = new IPEndPoint(SSDP_IP, SSDP_MULTICAST_PORT);
       private static readonly EndPoint SSDP_RECEIVE_ENDPOINT = new IPEndPoint(IPAddress.Any, SSDP_MULTICAST_PORT);
 
-
-      HttpClient _httpClient;
-
       //ConcurrentDictionary<string, SsdpDevice> _deviceCache = new ConcurrentDictionary<string, SsdpDevice>();
       ConcurrentDictionary<Uri, SsdpDevice> _foundLocations = new ConcurrentDictionary<Uri, SsdpDevice>();
 
       TaskCompletionSource<object> _cancelTask = new TaskCompletionSource<object>();
       bool _isCancelled => _cancelTokenSrc.IsCancellationRequested;
       CancellationTokenSource _cancelTokenSrc;
-      bool _isStarted;
       TimeSpan _rebroadcastInterval;
       TimeSpan _replyWait;
       Action<SsdpDevice> _deviceFoundCallback = null;
@@ -49,21 +46,11 @@ namespace SsdpRadar
 
       DateTime _startedTime;
 
-      public FinderService(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, HttpClient httpClient = null, CancellationToken? cancelToken = null)
+      public FinderService(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, CancellationToken? cancelToken = null)
       {
          _replyWait = replyWait;
          _rebroadcastInterval = rebroadcastInterval;
          _broadcasts = broadcasts;
-         if (httpClient == null)
-         {
-            ServicePointManager.DefaultConnectionLimit = Math.Max(ServicePointManager.DefaultConnectionLimit, 200);
-            _httpClient = new HttpClient();
-            _httpClient.Timeout = replyWait;
-         }
-         else
-         {
-            _httpClient = httpClient;
-         }
          _cancelTokenSrc = new CancellationTokenSource();
          if (cancelToken != null)
          {
@@ -72,9 +59,9 @@ namespace SsdpRadar
          _cancelTokenSrc.Token.Register(() => _cancelTask.TrySetCanceled());
       }
 
-      public static BufferBlock<SsdpDevice> StreamDevices(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, HttpClient httpClient = null, CancellationToken? cancelToken = null)
+      public static BufferBlock<SsdpDevice> StreamDevices(int broadcasts, TimeSpan rebroadcastInterval, TimeSpan replyWait, CancellationToken? cancelToken = null)
       {
-         var finderServer = new FinderService(broadcasts, rebroadcastInterval, replyWait, httpClient, cancelToken);
+         var finderServer = new FinderService(broadcasts, rebroadcastInterval, replyWait, cancelToken);
          var bufferBlock = finderServer.StreamDevices();
          bufferBlock.Completion.ContinueWith(t => finderServer.Dispose());
          return bufferBlock;
@@ -328,12 +315,13 @@ namespace SsdpRadar
                      }
                   }
                }
-               else 
+               else
                {
                   ObserveUdpReadTask(receiveTask);
                }
             }
-            catch (ObjectDisposedException){ }
+            catch (SocketException) { }
+            catch (ObjectDisposedException) { }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
@@ -354,20 +342,26 @@ namespace SsdpRadar
       {
          try
          {
-            var response = await _httpClient.GetAsync(device.Location, cancelToken);
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-               var data = await response.Content.ReadAsByteArrayAsync();
-               var dataStr = Encoding.UTF8.GetString(data);
-               var deviceInfo = SsdpDeviceInfo.ParseDeviceResponse(dataStr);
-               device.Info = deviceInfo;
+            //var response = await _httpClient.GetAsync(device.Location, cancelToken);
+            var httpRequest = WebRequest.CreateHttp(device.Location);
+            httpRequest.Timeout = (int)Math.Round(_replyWait.TotalMilliseconds);
+            cancelToken.Register(() => httpRequest.Abort());
 
-               //if (!_deviceCache.TryAdd(deviceInfo.Udn, device))
-               //{
-               //   return;
-               //}
+            using (var response = (HttpWebResponse)(await httpRequest.GetResponseAsync()))
+            {
+               if (response.StatusCode == HttpStatusCode.OK)
+               {
+                  using (var responseStream = response.GetResponseStream())
+                  using (var responseReader = new StreamReader(responseStream, Encoding.UTF8))
+                  {
+                     var data = await responseReader.ReadToEndAsync();
+                     var deviceInfo = SsdpDeviceInfo.ParseDeviceResponse(data);
+                     device.Info = deviceInfo;
+                  }
+               }
             }
          }
+         catch (WebException) { }
          catch (ObjectDisposedException) { }
          catch (OperationCanceledException) { }
          catch (Exception ex)
@@ -382,7 +376,6 @@ namespace SsdpRadar
       {
          _cancelTokenSrc.Cancel();
          _cancelTask.TrySetCanceled();
-         _httpClient.Dispose();
          _deviceFoundCallback = null;
       }
    }
