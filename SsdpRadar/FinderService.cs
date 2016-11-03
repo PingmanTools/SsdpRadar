@@ -361,6 +361,7 @@ namespace SsdpRadar
                }
             }
          }
+         catch (ArgumentException) { }
          catch (WebException) { }
          catch (ObjectDisposedException) { }
          catch (OperationCanceledException) { }
