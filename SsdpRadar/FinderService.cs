@@ -259,8 +259,8 @@ namespace SsdpRadar
          catch (OperationCanceledException) { }
          catch (Exception ex)
          {
-            Console.WriteLine(ex);
 #if DEBUG
+            Console.WriteLine(ex);
             throw;
 #endif
          }
@@ -332,8 +332,8 @@ namespace SsdpRadar
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-               Console.WriteLine(ex);
 #if DEBUG
+               Console.WriteLine(ex);
                throw ex;
 #endif
             }
@@ -375,7 +375,9 @@ namespace SsdpRadar
          catch (OperationCanceledException) { }
          catch (Exception ex)
          {
+            #if DEBUG
             Console.WriteLine(ex);
+            #endif
          }
 
          _deviceFoundCallback?.Invoke(device);
