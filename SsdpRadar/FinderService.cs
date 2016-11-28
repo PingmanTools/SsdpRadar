@@ -73,7 +73,7 @@ namespace SsdpRadar
 
          _deviceFoundCallback = d => bufferBlock.Post(d);
          var broadcastTask = BroadcastSockets();
-
+         ObserveUdpTaskException(broadcastTask);
          broadcastTask.ContinueWith(t => bufferBlock.Complete());
          _cancelTokenSrc.Token.Register(() => bufferBlock.Complete());
 
@@ -169,7 +169,10 @@ namespace SsdpRadar
          var niIndexs = GetUsableNetworkInterfaces();
 
          var socketTasks = niIndexs.Select(a => BroadcastSocket(a)).ToList();
-
+         foreach (var t in socketTasks)
+         {
+            ObserveUdpTaskException(t);
+         }
          await Task.WhenAll(socketTasks);
       }
 
@@ -232,22 +235,26 @@ namespace SsdpRadar
                   await Task.WhenAny(Task.Delay(_rebroadcastInterval), _cancelTask.Task);
                }
             }
+            catch (SocketException) { }
             catch (ObjectDisposedException) { }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
+               #if DEBUG
                Console.WriteLine(ex);
+               #endif
             }
          }
 
       }
 
-      async void ObserveUdpReadTask(Task task)
+      async void ObserveUdpTaskException(Task task)
       {
          try
          {
             await task;
          }
+         catch (SocketException) { }
          catch (ObjectDisposedException) { }
          catch (OperationCanceledException) { }
          catch (Exception ex)
@@ -317,7 +324,7 @@ namespace SsdpRadar
                }
                else
                {
-                  ObserveUdpReadTask(receiveTask);
+                  ObserveUdpTaskException(receiveTask);
                }
             }
             catch (SocketException) { }
@@ -363,6 +370,7 @@ namespace SsdpRadar
          }
          catch (ArgumentException) { }
          catch (WebException) { }
+         catch (SocketException) { }
          catch (ObjectDisposedException) { }
          catch (OperationCanceledException) { }
          catch (Exception ex)
