@@ -9,4 +9,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>
   </metadata>
+  <files>
+    <file src="bin\Release\SsdpRadar.dll" target="lib\Xamarin.Mac20" />
+  </files>
 </package>
