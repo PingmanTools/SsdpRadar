@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>SsdpRadar</id>
+    <title>SsdpRadar</title>
+    <version>$version$</version>
+    <authors>https://github.com/PingmanTools/SsdpRadar</authors>
+    <owners>https://github.com/PingmanTools/SsdpRadar</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+  </metadata>
+</package>
