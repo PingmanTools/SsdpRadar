@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard1.4</TargetFramework>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/PingmanTools/SsdpRadar</PackageProjectUrl>
     <Company>Pingman Tools</Company>
     <Authors>Matthew Little</Authors>
