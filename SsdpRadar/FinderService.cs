@@ -195,8 +195,6 @@ namespace SsdpRadar
             var receiveTask = ReceiveServicer(udpClient);
             var broadcastTask = BroadcastServicer(udpClient);
             await Task.WhenAll(receiveTask, broadcastTask);
-
-            udpClient.Close();
          }
       }
 
@@ -349,10 +347,15 @@ namespace SsdpRadar
       {
          try
          {
-            //var response = await _httpClient.GetAsync(device.Location, cancelToken);
             var httpRequest = WebRequest.CreateHttp(device.Location);
+
+#if NETSTANDARD
+            new CancellationTokenSource(_replyWait).Token.Register(() => { try { httpRequest.Abort(); } catch { } });
+#else
             httpRequest.Timeout = (int)Math.Round(_replyWait.TotalMilliseconds);
-            cancelToken.Register(() => httpRequest.Abort());
+#endif
+
+            cancelToken.Register(() => { try { httpRequest.Abort(); } catch { } });
 
             using (var response = (HttpWebResponse)(await httpRequest.GetResponseAsync()))
             {
@@ -375,9 +378,9 @@ namespace SsdpRadar
          catch (OperationCanceledException) { }
          catch (Exception ex)
          {
-            #if DEBUG
+#if DEBUG
             Console.WriteLine(ex);
-            #endif
+#endif
          }
 
          _deviceFoundCallback?.Invoke(device);
