@@ -7,30 +7,31 @@
     <Company>Pingman Tools</Company>
     <Authors>Matthew Little</Authors>
     <PackageLicenseUrl>https://github.com/PingmanTools/SsdpRadar/blob/master/LICENSE</PackageLicenseUrl>
+    <Description>SSDP (Simple Service Discovery Protocol) Discovery Library</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DefineConstants>TRACE;NETSTANDARD</DefineConstants>
+    <DefineConstants>NETSTANDARD;RELEASE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD</DefineConstants>
+    <DefineConstants>DEBUG;NETSTANDARD</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD</DefineConstants>
+    <DefineConstants>DEBUG;NETSTANDARD</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <DefineConstants>TRACE;DEBUG;NETSTANDARD</DefineConstants>
+    <DefineConstants>DEBUG;NETSTANDARD</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <DefineConstants>TRACE;NETSTANDARD</DefineConstants>
+    <DefineConstants>NETSTANDARD;RELEASE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <DefineConstants>TRACE;NETSTANDARD</DefineConstants>
+    <DefineConstants>NETSTANDARD;RELEASE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
