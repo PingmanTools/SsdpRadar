@@ -10,14 +10,14 @@
     <projectUrl>https://github.com/PingmanTools/SsdpRadar</projectUrl>
     <description>SSDP (Simple Service Discovery Protocol) Discovery Library</description>
     <dependencies>
-      <group targetFramework="net451">
-        <dependency id="System.Threading.Tasks.Dataflow" version="4.7.0" />
-      </group>
       <group targetFramework=".NETStandard1.4">
         <dependency id="NETStandard.Library" version="1.6.0" exclude="Build,Analyzers" />
         <dependency id="System.Net.NetworkInformation" version="4.3.0" exclude="Build,Analyzers" />
         <dependency id="System.Net.Requests" version="4.3.0" exclude="Build,Analyzers" />
         <dependency id="System.Threading.Tasks.Dataflow" version="4.7.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETFramework4.5.1">
+        <dependency id="System.Threading.Tasks.Dataflow" version="4.7.0" />
       </group>
     </dependencies>
   </metadata>
