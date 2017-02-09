@@ -16,13 +16,13 @@
         <dependency id="System.Net.Requests" version="4.3.0" exclude="Build,Analyzers" />
         <dependency id="System.Threading.Tasks.Dataflow" version="4.7.0" exclude="Build,Analyzers" />
       </group>
-      <group targetFramework=".NETFramework4.5.1">
+      <group targetFramework=".NETFramework4.5">
         <dependency id="System.Threading.Tasks.Dataflow" version="4.7.0" />
       </group>
     </dependencies>
   </metadata>
   <files>
     <file src="SsdpRadar\bin\Release\netstandard1.4\SsdpRadar.dll" target="lib\netstandard1.4\SsdpRadar.dll" />
-    <file src="SsdpRadar.NET451\bin\Release\SsdpRadar.dll" target="lib\net451\SsdpRadar.dll" />
+    <file src="SsdpRadar.NET45\bin\Release\SsdpRadar.dll" target="lib\net45\SsdpRadar.dll" />
   </files>
 </package>
