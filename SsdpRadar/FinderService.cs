@@ -348,12 +348,7 @@ namespace SsdpRadar
          try
          {
             var httpRequest = WebRequest.CreateHttp(device.Location);
-
-#if NETSTANDARD
-            new CancellationTokenSource(_replyWait).Token.Register(() => { try { httpRequest.Abort(); } catch { } });
-#else
             httpRequest.Timeout = (int)Math.Round(_replyWait.TotalMilliseconds);
-#endif
 
             cancelToken.Register(() => { try { httpRequest.Abort(); } catch { } });
 
